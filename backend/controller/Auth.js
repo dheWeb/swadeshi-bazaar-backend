@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+require('dotenv').config();
 
 const pool = mysql.createPool({
   host:process.env.DB_HOST,
@@ -29,16 +30,16 @@ exports.createUser = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10); // Hash the password
     const connection = await pool.getConnection();
-    const [results, fields] = await connection.execute('INSERT INTO users (email, password, role,name) VALUES (?, ?, ?,?)', [req.body.email, hashedPassword, req.body.role,req.body.name]);
+    const [results, fields] = await connection.execute('INSERT INTO users (first_name,last_name,email, password) VALUES (?,?,?, ?)', [req.body.first_name,req.body.last_name,req.body.email, hashedPassword]);
     connection.release();
     
     // Generate JWT token
-    const token = jwt.sign({ id: results.insertId, role: results.role }, process.env.JWT_TOKEN);
+    const token = jwt.sign({ id: results.insertId}, process.env.JWT_TOKEN);
     
     // Set token in cookie
     res.cookie('token', token, { httpOnly: true });
     
-    res.status(201).json({ id: results.insertId, role: results.role });
+    res.status(201).json({ id: results.insertId});
   } catch (err) {
     console.error('Error creating user:', err);
     res.status(400).json({ message: 'Error creating user' });
@@ -60,12 +61,12 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
     if (isPasswordValid) {
       // Generate JWT token
-      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: user.id}, process.env.JWT_SECRET);
       
       // Set token in cookie
       res.cookie('token', token, { httpOnly: true });
       
-      res.status(200).json({ id: user.id, role: user.role , token: token});
+      res.status(200).json({ id: user.id, token: token});
     } else {
       res.status(401).json({ message: 'Invalid credentials' });
     }
