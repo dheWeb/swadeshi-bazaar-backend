@@ -13,17 +13,17 @@ const authRouter = require('./routes/Auth');
 const cartRouter = require('./routes/Cart');
 const ordersRouter = require('./routes/Order');
 
-// server.use(cors({
-//     exposedHeaders:['X-Total-Count']
-// }));
+server.use(cors({
+    exposedHeaders:['X-Total-Count']
+}));
 server.use(express.json());
 server.use(cookieParser());
-// server.use(session({
-//     secret: process.env.SESSION_SECRET,
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: { secure: true } // Set to true if using HTTPS
-// }));
+server.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true } // Set to true if using HTTPS
+}));
 
 server.use('/products', productsRouter);
 server.use('/categories', categoriesRouter);
