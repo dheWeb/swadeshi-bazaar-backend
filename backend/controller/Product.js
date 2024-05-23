@@ -1,7 +1,8 @@
 const mysql = require('mysql2/promise');
-
+require('dotenv').config();
 const pool = mysql.createPool({
   host:process.env.DB_HOST,
+  user:process.env.DB_USER,
   password:process.env.DB_PASSWORD,
   database:process.env.DB_DATABASE,
   waitForConnections: true,
@@ -9,11 +10,40 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
+
 exports.createProduct = async (req, res) => {
   const { title, description, price, discountPercentage, rating, stock, brand, category, thumbnail, images, deleted,discount_price } = req.body;
   try {
     const connection = await pool.getConnection();
-    const [result, fields] = await connection.execute('INSERT INTO products (title, description, price, discountPercentage, rating, stock, brand, category, thumbnail, images, deleted,discount_price) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [title, description, price, discountPercentage, rating, stock, brand, category, thumbnail, JSON.stringify(images), deleted,discount_price]);
+    const [result, fields] = await connection.execute('INSERT INTO products (title, description, price, discountPercentage, rating, stock, brand, category, thumbnail, images, deleted,discount_price,ProductName, ProductDescription, ProductImage, ProductCode, ProductCategory, ProductSubCategory, ProductBrand, ProductColor, ProductSize, ProductWeight, ProductMaterial, ProductQuantity, ProductUnit, ProductPrice, SalesPrice, ProductDiscount, ProductDiscountType, ProductTax, ProductTaxType, ProductShippingCharge, ProductShippingChargeType, ProductShippingTime, ProductShippingTimeType, ProductShippingLocation, ProductShippingLocationType, ProductShippingReturnPolicy, ProductShippingReturnPolicyType, ProductShippingReturnPolicyDescription, ProductShippingReturnPolicyDescriptionType) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [title, description, price, discountPercentage, rating, stock, brand, category, thumbnail, JSON.stringify(images), deleted,discount_price,ProductName, 
+      ProductDescription, 
+      JSON.stringify(ProductImage), 
+      ProductCode, 
+      ProductCategory, 
+      ProductSubCategory, 
+      ProductBrand, 
+      ProductColor, 
+      ProductSize, 
+      ProductWeight, 
+      ProductMaterial, 
+      ProductQuantity, 
+      ProductUnit, 
+      ProductPrice, 
+      SalesPrice, 
+      ProductDiscount, 
+      ProductDiscountType, 
+      ProductTax, 
+      ProductTaxType, 
+      ProductShippingCharge, 
+      ProductShippingChargeType, 
+      ProductShippingTime, 
+      ProductShippingTimeType, 
+      ProductShippingLocation, 
+      ProductShippingLocationType, 
+      ProductShippingReturnPolicy, 
+      ProductShippingReturnPolicyType, 
+      ProductShippingReturnPolicyDescription, 
+      ProductShippingReturnPolicyDescriptionType]);
     connection.release();
     res.status(201).json({ id: result.insertId, ...req.body });
   } catch (err) {
@@ -25,6 +55,7 @@ exports.createProduct = async (req, res) => {
 exports.fetchAllProducts = async (req, res) => {
   let query = 'SELECT * FROM products WHERE deleted != ?';
   let queryParams = [true];
+  
 
   if (req.query.category) {
     query += ' AND category = ?';
