@@ -1,25 +1,15 @@
-const mysql = require('mysql2/promise');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const pool = require('../config/db'); // Import the database connection from db.js
 require('dotenv').config();
-
-const pool = mysql.createPool({
-  host:process.env.DB_HOST,
-  user:process.env.DB_USER,
-  password:process.env.DB_PASSWORD,
-  database:process.env.DB_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
 
 // Nodemailer transporter using SMTP
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port:process.env.SMTP_POR,
+  port: process.env.SMTP_PORT,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
@@ -30,16 +20,16 @@ exports.createUser = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10); // Hash the password
     const connection = await pool.getConnection();
-    const [results, fields] = await connection.execute('INSERT INTO users (first_name,last_name,email, password) VALUES (?,?,?, ?)', [req.body.first_name,req.body.last_name,req.body.email, hashedPassword]);
+    const [results, fields] = await connection.execute('INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)', [req.body.first_name, req.body.last_name, req.body.email, hashedPassword]);
     connection.release();
     
     // Generate JWT token
-    const token = jwt.sign({ id: results.insertId}, process.env.JWT_TOKEN);
+    const token = jwt.sign({ id: results.insertId }, process.env.JWT_SECRET);
     
     // Set token in cookie
     res.cookie('token', token, { httpOnly: true });
     
-    res.status(201).json({ id: results.insertId});
+    res.status(201).json({ id: results.insertId });
   } catch (err) {
     console.error('Error creating user:', err);
     res.status(400).json({ message: 'Error creating user' });
@@ -49,7 +39,7 @@ exports.createUser = async (req, res) => {
 exports.loginUser = async (req, res) => {
   try {
     const connection = await pool.getConnection();
-    const [results, fields] = await connection.execute('SELECT * FROM users WHERE email = ? ', [req.body.email]);
+    const [results, fields] = await connection.execute('SELECT * FROM users WHERE email = ?', [req.body.email]);
     connection.release();
 
     if (results.length === 0) {
@@ -61,12 +51,12 @@ exports.loginUser = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(req.body.password, user.password); // Compare hashed password
     if (isPasswordValid) {
       // Generate JWT token
-      const token = jwt.sign({ id: user.id}, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET);
       
       // Set token in cookie
       res.cookie('token', token, { httpOnly: true });
       
-      res.status(200).json({ id: user.id, token: token});
+      res.status(200).json({ id: user.id, token });
     } else {
       res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -75,6 +65,7 @@ exports.loginUser = async (req, res) => {
     res.status(400).json({ message: 'Error logging in user' });
   }
 };
+
 exports.logoutUser = async (req, res) => {
   try {
     // Clear the authentication token from the client's cookies
@@ -87,7 +78,6 @@ exports.logoutUser = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
-  console.log(req.body);
   try {
     const connection = await pool.getConnection();
     const [results, fields] = await connection.execute('SELECT * FROM users WHERE email = ?', [req.body.email]);
@@ -99,17 +89,13 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const user = results[0];
-
     
     const tempPassword = Math.random().toString(36).slice(-8);
-
-    
     const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
     await connection.execute('UPDATE users SET password = ? WHERE id = ?', [hashedTempPassword, user.id]);
 
-    
     const mailOptions = {
-      from: process.env.SMTP_USER, 
+      from: process.env.SMTP_USER,
       to: req.body.email,
       subject: 'Password Reset',
       text: `Your temporary password is: ${tempPassword}. Please use this to login and reset your password.`,
@@ -135,21 +121,16 @@ passport.use(new GoogleStrategy({
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: process.env.GOOGLE_CALLBACK_URL
 },
-async function(accessToken, refreshToken, profile, done) {
-
+async function (accessToken, refreshToken, profile, done) {
   try {
     const connection = await pool.getConnection();
     const [results, fields] = await connection.execute('SELECT * FROM users WHERE id = ?', [profile.id]);
     connection.release();
 
     if (results.length === 0) {
-      
       const [insertResult, insertFields] = await connection.execute('INSERT INTO users (id, email) VALUES (?, ?)', [profile.id, profile.emails[0].value]);
-      
       return done(null, insertResult.insertId);
-      
     } else {
-     
       return done(null, results[0].id);
     }
   } catch (err) {
@@ -159,21 +140,17 @@ async function(accessToken, refreshToken, profile, done) {
 }
 ));
 
-
-passport.serializeUser(function(user, done) {
-done(null, user);
+passport.serializeUser((user, done) => {
+  done(null, user);
 });
 
-passport.deserializeUser(function(id, done) {
-done(null, id);
+passport.deserializeUser((id, done) => {
+  done(null, id);
 });
-
 
 exports.googleLogin = passport.authenticate('google', { scope: ['profile', 'email'] });
 
-
 exports.googleCallback = passport.authenticate('google', { failureRedirect: '/login' }),
-function(req, res) {
-  res.redirect('/');
-};
-
+  (req, res) => {
+    res.redirect('/');
+  };

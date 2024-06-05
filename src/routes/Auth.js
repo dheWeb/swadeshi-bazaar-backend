@@ -11,9 +11,8 @@ router.get('/google', googleLogin);
 router.get('/google/callback', googleCallback);
 // Route for creating a new user
 router.post('/signup', createUser);
-
 // Route for user login
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
-router.post('/forgot-password',forgotPassword)
+router.post('/forgotpassword',forgotPassword)
 module.exports = router;

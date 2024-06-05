@@ -1,20 +1,10 @@
-const { log } = require('console');
-const mysql = require('mysql2/promise');
-
-const pool = mysql.createPool({
-  host:process.env.DB_HOST,
-  password:process.env.DB_PASSWORD,
-  database:process.env.DB_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+const pool = require('../config/db'); // Import the database connection from db.js
 
 exports.fetchCartByUser = async (req, res) => {
   const { user } = req.query;
   try {
     const connection = await pool.getConnection();
-    const [results, fields] = await connection.execute('SELECT * FROM carts WHERE user_id = ?', [req.query.users]);
+    const [results, fields] = await connection.execute('SELECT * FROM carts WHERE user_id = ?', [user]);
     connection.release();
     res.status(200).json(results);
   } catch (err) {
@@ -27,7 +17,10 @@ exports.addToCart = async (req, res) => {
   try {
     const connection = await pool.getConnection();
     console.log(JSON.stringify(req.body));
-    const [result, fields] = await connection.execute('INSERT INTO carts (quantity, product_id, user_id,price,name) VALUES (?, ?, ?,?,?)', [req.body.quantity, req.body.product_id, req.body.user_id,req.body.price,req.body.name]);
+    const [result, fields] = await connection.execute(
+      'INSERT INTO carts (quantity, product_id, user_id, price, name) VALUES (?, ?, ?, ?, ?)', 
+      [req.body.quantity, req.body.product_id, req.body.user_id, req.body.price, req.body.name]
+    );
     connection.release();
     res.status(201).json({ id: result.insertId, ...req.body });
   } catch (err) {
@@ -54,7 +47,10 @@ exports.updateCart = async (req, res) => {
   console.log(req);
   try {
     const connection = await pool.getConnection();
-    await connection.execute('UPDATE carts SET quantity = ?, product_id = ?, user_id = ? WHERE id = ?', [req.body.quantity, req.body.product, req.body.user_id,id]);
+    await connection.execute(
+      'UPDATE carts SET quantity = ?, product_id = ?, user_id = ? WHERE id = ?', 
+      [req.body.quantity, req.body.product_id, req.body.user_id, id]
+    );
     connection.release();
     res.status(200).json({ id, ...req.body });
   } catch (err) {
